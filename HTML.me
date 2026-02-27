@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Highway Rush 2D Pro Max</title>
+<style>
+body { margin:0; overflow:hidden; background:black; }
+canvas { display:block; margin:auto; background:#2c2c2c; }
+#nitroBtn {
+ position:fixed;
+ bottom:20px;
+ right:20px;
+ padding:15px 25px;
+ font-size:18px;
+ background:orange;
+ color:white;
+ border:none;
+ border-radius:10px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<button id="nitroBtn">NITRO</button>
+
+<script>
+let canvas = document.getElementById("game");
+let ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let carImg = new Image();
+carImg.src = "https://i.imgur.com/7Q9QZ6T.png"; // simple top car image
+
+let car = { x: canvas.width/2 - 35, y: canvas.height - 140, w:70, h:120 };
+let enemies = [];
+let baseSpeed = 6;
+let speed = baseSpeed;
+let score = 0;
+let highScore = localStorage.getItem("highScore") || 0;
+let gameOver = false;
+let roadOffset = 0;
+let nitroActive = false;
+
+// sounds
+let crashSound = new Audio("https://actions.google.com/sounds/v1/impacts/crash.ogg");
+let pointSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+let nitroSound = new Audio("https://actions.google.com/sounds/v1/transportation/car_accelerate.ogg");
+
+function spawnEnemy(){
+ let x = Math.random() * (canvas.width - 60);
+ enemies.push({x:x, y:-120, w:60, h:120});
+}
+setInterval(spawnEnemy, 1000);
+
+// moving road
+function drawRoad(){
+ ctx.fillStyle="#444";
+ ctx.fillRect(canvas.width/2-5,0,10,canvas.height);
+
+ ctx.strokeStyle="white";
+ ctx.lineWidth=6;
+ ctx.setLineDash([25,25]);
+ ctx.lineDashOffset=-roadOffset;
+ ctx.beginPath();
+ ctx.moveTo(canvas.width/2,0);
+ ctx.lineTo(canvas.width/2,canvas.height);
+ ctx.stroke();
+
+ roadOffset+=speed;
+}
+
+// draw car image
+function drawCar(){
+ ctx.drawImage(carImg, car.x, car.y, car.w, car.h);
+}
+
+// enemies
+function drawEnemies(){
+ ctx.fillStyle="blue";
+ enemies.forEach((e,index)=>{
+   ctx.fillRect(e.x,e.y,e.w,e.h);
+   e.y+=speed;
+
+   if(e.y>canvas.height){
+     enemies.splice(index,1);
+     score++;
+     pointSound.play();
+   }
+
+   if(car.x < e.x + e.w &&
+      car.x + car.w > e.x &&
+      car.y < e.y + e.h &&
+      car.y + car.h > e.y){
+
+      crashSound.play();
+      gameOver=true;
+
+      if(score>highScore){
+        highScore=score;
+        localStorage.setItem("highScore",highScore);
+      }
+   }
+ });
+}
+
+function drawText(){
+ ctx.fillStyle="white";
+ ctx.font="20px Arial";
+ ctx.fillText("Score: "+score,20,30);
+ ctx.fillText("High Score: "+highScore,20,60);
+}
+
+function update(){
+ if(gameOver){
+   ctx.fillStyle="white";
+   ctx.font="40px Arial";
+   ctx.fillText("GAME OVER",canvas.width/2-130,canvas.height/2);
+   ctx.font="20px Arial";
+   ctx.fillText("Tap To Restart",canvas.width/2-70,canvas.height/2+40);
+   return;
+ }
+
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ drawRoad();
+ drawCar();
+ drawEnemies();
+ drawText();
+ requestAnimationFrame(update);
+}
+update();
+
+// touch move
+canvas.addEventListener("touchmove",function(e){
+ let touchX=e.touches[0].clientX;
+ car.x=touchX-car.w/2;
+
+ if(car.x<0) car.x=0;
+ if(car.x+car.w>canvas.width) car.x=canvas.width-car.w;
+});
+
+// restart
+canvas.addEventListener("touchstart",function(){
+ if(gameOver){
+   enemies=[];
+   score=0;
+   speed=baseSpeed;
+   gameOver=false;
+   update();
+ }
+});
+
+// NITRO BOOST
+let nitroBtn=document.getElementById("nitroBtn");
+nitroBtn.addEventListener("touchstart",function(){
+ if(!gameOver){
+   nitroActive=true;
+   speed=baseSpeed*2;
+   nitroSound.play();
+ }
+});
+
+nitroBtn.addEventListener("touchend",function(){
+ nitroActive=false;
+ speed=baseSpeed;
+});
+</script>
+</body>
+</html>
